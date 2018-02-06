@@ -1,0 +1,704 @@
+
+This notebook is prepared from the Data Analysis Course taught by Prof. Koyak in NPS
+
+DATA ANALYSIS WITH R
+
+
+1. With the pima dataset in the faraway package, first make sure that zeros representing missing values are coded as NA (you might want to save this “new” data set as something called pima2 for future use). Produce a table that shows sample size, mean, and standard deviation of bmi broken down into the following three categories: (i) triceps < 20; (ii) 20  triceps < 40; (iii) triceps  40. Be sure to subset out missing values in your calculations. HINT: check out the cut() command.
+
+```{r}
+require(faraway)
+```
+
+```{r}
+head(pima)
+pima2=pima
+any(is.na(pima2))
+pima2
+```
+
+Pima data has missing values but we could not detect them because missing values are coded with "0", not with NA
+
+We need to convert missing values represented with "0" to NA
+
+Be careful, test variable has 0 - 1, so 0 values in test are not missing values
+
+```{r}
+pima2
+```
+
+```{r}
+pima3=pima2[,c(-1,-9)]
+```
+
+It is easier to handle with NA's than 0's
+
+```{r}
+pima3
+pima3[pima3==0]=NA
+pima3 = na.omit(pima3)
+pima3
+```
+
+```{r}
+cuttriceps = cut(pima3$triceps, br=c(0, 20, 40, length(pima3$triceps)))
+cuttriceps
+mean1=tapply(pima3$bmi,cuttriceps,mean)
+sd1 = tapply(pima3$bmi, cuttriceps, sd)
+count1 = tapply(pima3$bmi, cuttriceps, length)
+cbind (mean1, sd1, count1)
+res = aggregate(pima3$bmi,list(cuttriceps), function(x) c(len = length(x), mean= mean(x), sd= sd(x)))
+res
+```
+Easier way to do it
+
+```{r}
+with(pima3, (tapply(bmi,cuttriceps,function(x) c(round(mean(x)),round(length(x)),round(sd(x))))))
+
+```
+
+2. Data frame called Effluent.  This data frame has two variables: Plant (A, B, C, or D) and Waste. There are four industrial plants and Waste measures the amount of pollutants (effluents) in the waste water.
+a. For each Plant calculate the sample mean and SD and present the results in a table.
+  
+b. Produce a panel of statistical graphics that helps you compare data from the different plants. Make it look good, with axis labels and a title.
+c. Using Plants A and B only: test the null hypothesis that their means are equal against a two-sided alternative hypothesis. Assume that the data come from normal distributions with the same variance. Report the p-value and state whether or not you reject the null hypothesis at the   .10 test level.
+
+```{r}
+load("/Users/muratyalcin/Desktop/Google Drive/nps/my Data Analysis/labs/lab 1/Effluent.RData")
+Effluent
+```
+
+```{r}
+with(Effluent, tapply(Waste, Plant, (function(x) c(means= mean(x),stds=sd(x)))))
+
+means = with(Effluent, tapply(Waste, Plant,mean))
+stds = with(Effluent, tapply(Waste, Plant,mean))
+cbind(means, stds)
+```
+
+```{r}
+aggregate(Effluent$Waste, list(Effluent$Plant), function(x) c(mean(x), sd(x)))
+```
+
+```{r}
+boxplot(Waste ~ Plant , data = Effluent, col = 2:5, xlab = "Plants", ylab = "Waste")
+```
+
+```{r}
+require(graphics)
+stripchart(Waste ~ Plant, data=Effluent, col=2:5, vertical= T, pch = 8, xlab= 'Plant', main= 'Waste ~ Plant')
+
+```
+
+```{r}
+meanvec = with(Effluent, tapply(Waste, Plant, mean))
+sdvec = with(Effluent, tapply(Waste, Plant, sd))
+plot(meanvec, sdvec, cex=0.8, font=2, pch=1, col = 2:5)
+```
+
+```{r}
+A = Effluent$Waste[Effluent$Plant=='A']
+B = Effluent$Waste[Effluent$Plant=='B']
+
+t.test(A,B, conf.level = 0.90)
+
+```
+
+Small p-value leads us to reject NULL Hypothesis. So we say that, Plant A and B has different means
+
+```{r}
+with(Effluent, t.test(Waste[Plant=='A'], Waste[Plant=="B"], conf.level = 0.90))
+
+```
+
+Since p-value is less than 0.1 we reject Null Hypothesis, means that Means of Plant A and Plant B are not equal
+
+
+4. Faraway, Exercise 2, p. 233. 
+Determine whther there are differences in the weights of chickens according to their feed in the chickwts data. Perform all necessary model diagnostics.
+
+```{r}
+chickwts
+levels(chickwts$feed)
+```
+
+```{r}
+with(chickwts, boxplot(weight ~ feed , col = 2:8))
+with(chickwts, stripchart(weight~feed, col=2:8,pch=8, vertical=T))
+meanc = with(chickwts, tapply(weight, feed, mean))
+sdc = with(chickwts, tapply(weight, feed, sd))
+plot(meanc,sdc,col=2:8)
+legend('topleft', rownames(meanvec), col =c(2:8), pch=19, bty='n', cex=.75)
+```
+
+```{r}
+aovlist=aov(weight ~ feed,data = chickwts)
+with(chickwts, aov(weight ~ feed))
+with(chickwts, var.test(weight , feed, na.pass=T))
+qqnorm(aovlist$residuals)
+qqline(aovlist$residuals)
+```
+
+```{r}
+load(file.choose())
+AC
+```
+
+```{r}
+nvec = sapply(AC,length)
+nvec
+```
+
+```{r}
+ACfail = as.vector(unlist(AC))
+ACfail
+Aircraft = factor(rep(1:length(AC), times = nvec))
+Aircraft
+ac.aov = aov(ACfail ~ Aircraft)
+summary(ac.aov)
+```
+
+Small p-value indicates that there is no difference between aircraft failures
+
+```{r}
+boxplot(ACfail ~ Aircraft, col= 1:10)
+stripchart(ACfail ~ Aircraft, col= 1:10, pch=8, vertical=T)
+```
+
+There is a heteroscedaasticity, unequal variances
+
+```{r}
+qqnorm(ac.aov$residuals)
+qqline(ac.aov$residuals)
+
+m= tapply(ACfail , Aircraft, mean)
+s= tapply(ACfail , Aircraft, sd)
+plot(m,s,col=1:10)
+legend('topleft', rownames(m), col =c(1:10), pch=19, bty='n', cex=.75)
+```
+
+"U" shape normal plot indicates to right skewness
+
+```{r}
+kruskal.test(AC)
+```
+
+Kruskal-Wallis test does not find a significant difference between the aircraft. We should consider :
+
+ F-test in Anova tends to have a higher probability of Type 1 error when variance not equal.
+
+Let's try Box-Cox transformation. 
+lambda = 1 linear
+lambda = 0.5 square
+lambda = -1 reciprocal (1/x)
+
+```{r}
+require(MASS)
+blist = boxcox(ac.aov, seq(-2,2, length=1000))
+lambda = with(blist, x[which.max(y)])
+lambda
+```
+
+If lambda = 1 is in the interval, we accept that transformation will not be different from linear regression.
+
+```{r}
+ac.aov2 = aov(ACfail^lambda ~ Aircraft)
+summary(ac.aov2)
+```
+
+Note that, p-value no longer gives us a significant result. The classical Anova now agrees with the Kruskal-Wallis test.
+
+Let's see the diognastics again
+
+```{r}
+boxplot(ACfail^lambda ~ Aircraft, col= 1:10)
+stripchart(ACfail^lambda ~ Aircraft, col= 1:10, pch=8, vertical=T)
+qqnorm(ac.aov2$residuals)
+qqline(ac.aov2$residuals)
+
+m= tapply(ACfail^lambda , Aircraft, mean)
+s= tapply(ACfail^lambda , Aircraft, sd)
+plot(m,s,col=1:10)
+legend('topleft', rownames(m), col =c(1:10), pch=19, bty='n', cex=.75)
+```
+
+```{r}
+#  Using all aircraft:
+#
+require(lawstat)
+require(Kendall)
+require(mvtnorm)
+require(VGAM)
+require(splines2)
+
+levene.test(ACfail^lambda,Aircraft,location = "trim.mean")
+#
+#  Dropping Aircraft 8:
+#
+	tt.use = as.numeric(Aircraft) != 8
+	levene.test(ACfail[tt.use]^lambda,Aircraft[tt.use],
+		location = "trim.mean")
+```
+
+1. Find the smallest and largest values of failure time in the AC data list. Over the range bracketed by these values plot two functions together: (i) g(y)  log(y);
+(ii) g(y)  (y 1) /  using the value of  indicated earlier that maximizes the likelihood. Use two different colors and include a legend. Are the two plots similar?
+HINT: check out the matplot() command.
+
+```{r}
+logy = log(ACfail)
+lamdy = (ACfail^lambda - 1)/ lambda
+y <- cbind(logy, lamdy)
+matplot(ACfail, y,lty = c(1,2),lwd = 1,col = c(2:3),pch = 19,type = "p")
+
+```
+
+```{r}
+
+acrange = range(as.vector(unlist(AC)))
+yvec = seq(acrange[1],acrange[2],length = 10000)
+lambda = .14
+G = cbind(log(yvec),(yvec^lambda - 1)/lambda)
+matplot(yvec,G,lty = c(1,1),lwd = 2.5,type = "l",
+     col = c("blue","maroon"),xlab = "y",
+     ylab = "g(y)",cex.lab = 1.5)
+legend("bottomright",legend = c("log(y)",
+     expression(paste((y^lambda - 1)/ lambda," ,",
+     lambda == .14))),
+     col = c("blue","maroon"),lty = c(1,1),lwd =
+     c(2.5,2.5),bty = "n",cex = 1.2)
+title("Comparing log(y) to a Box-Cox Transformation")
+
+```
+
+2. Do a test for equality of variances on the transformed AC data. What conclusion do you draw? Now drop Aircraft 8 out of the analysis and redo the test. Is the conclusion different?
+
+```{r}
+var.test(ACfail^lambda,Aircraft)
+summary(ac.aov2)
+```
+
+F-test indicates that there is difference between variances
+
+Faraway Q5(d-f) page 233
+
+```{r}
+require(faraway)
+anaesthetic
+```
+
+```{r}
+dim(anaesthetic)
+anaesthetic.aov = aov(breath ~ tgrp, data = anaesthetic)
+summary(anaesthetic.aov)
+```
+
+```{r}
+blist = boxcox(anaesthetic.aov, seq( -2, 2, length= 1000))
+lambda = with(blist, x[which.max(y)])
+```
+
+'0' values in breath causes problem. Let's take them out and do the boxcox again
+
+```{r}
+anaesthetic$breath[anaesthetic$breath<=0]=NA
+anaesthetic=na.omit(anaesthetic)
+anaesthetic.aov = aov(breath ~ tgrp, data = anaesthetic)
+summary(anaesthetic.aov)
+```
+
+```{r}
+blist = boxcox(anaesthetic.aov, seq( -2, 2, length= 1000))
+lambda = with(blist, x[which.max(y)])
+```
+
+```{r}
+anaesthetic.aov = aov(sqrt(breath) ~ tgrp, data = anaesthetic)
+summary(anaesthetic.aov)
+```
+
+```{r}
+blist = boxcox(anaesthetic.aov, seq( -2, 2, length= 1000))
+lambda = with(blist, x[which.max(y)])
+lambda
+```
+
+
+
+```{r}
+kruskal.test(breath~tgrp,data=anaesthetic)
+```
+
+There is no strong indication for a difference between groups
+
+```{r}
+dietary = read.csv(file.choose())
+dietary
+```
+
+```{r}
+kruskal.test(Nitrogen~X..Protein,data=dietary)
+```
+
+```{r}
+dietary$X..Protein<-as.factor(dietary$X..Protein)
+dietary.aov = aov(Nitrogen~X..Protein,data=dietary)
+summary(dietary.aov)
+```
+
+With Kruskal-Wallis test we fail to reject the NULL hypothesis, however with Anova we reject the NULL hypothesis. We need to look at the diognostics (boxplot, stripchart, qqnorm, mean-sd) carefully
+
+```{r}
+boxplot(Nitrogen~X..Protein,data=dietary, col= 1:4)
+stripchart(Nitrogen~X..Protein,data=dietary, col= 1:4, pch=8, vertical=T)
+qqnorm(dietary.aov$residuals)
+qqline(dietary.aov$residuals)
+
+m= with(dietary, tapply(Nitrogen,X..Protein, mean))
+s= with(dietary, tapply(Nitrogen,X..Protein, sd))
+plot(m,s,col=1:4)
+legend('topleft', rownames(m), col =c(1:4), pch=19, bty='n', cex=.75)
+```
+
+```{r}
+mortar = read.csv(file.choose())
+mortar
+```
+
+```{r}
+mortar.aov = aov(strength~ Mortars, data= mortar)
+summary(mortar.aov)
+```
+
+```{r}
+TukeyHSD(mortar.aov)
+```
+
+```{r}
+pairwise.t.test(mortar$strength, mortar$Mortars, p.adjust.method = "bonf")
+```
+
+```{r}
+#  Bonferroni method
+#
+	mtrs = levels(mortar$Mortars)
+	n = length(mtrs)
+	m = choose(n,2)
+	Compar = rep("",m)
+	pvec = rep(0.,m)
+	k = 0
+	for (j in 2:n) {
+		for (i in 1:(j-1)) {
+			k = k + 1
+			Compar[k] = paste(mtrs[i],mtrs[j],sep = "-")
+			tti = mortar$Mortars == mtrs[i]
+			ttj = mortar$Mortars == mtrs[j]
+			pvec[k] = t.test(mortar$strength[tti],mortar$strength[ttj],
+				var.equal = T)$p.value
+		}
+	}
+	padj = p.adjust(pvec,method = "bonferroni")
+	data.frame(Comparison = Compar,PValue = round(pvec,8),
+	BonfAdj = round(padj,8))
+```
+
+Only difference between Tukey and Bonderroni, Bonferroni accepts that PIM and RM are not different
+
+PRACTICE 3
+
+```{r}
+(A = matrix(round(rnorm(6),4),3,2))
+(B = matrix(round(rnorm(6),2),3,2))
+```
+
+```{r}
+t(A) %*% B
+```
+
+```{r}
+A= matrix(round(rnorm(6),4),3,3)
+y= matrix(round(rnorm(3,7),4),3,1)
+A
+y
+solve(A, y)
+t(A)
+diag(A)
+solve(A)
+det(A)
+eigen(A)
+svd(A)
+```
+
+```{r}
+load(file.choose())
+RHO = cov2cor(V)
+round(RHO,3)
+```
+
+
+PART 4
+
+```{r}
+Piman = Pima[,c("pregnant","glucose","diastolic","triceps","age",
+     "insulin")]
+panel.hist = function(x, ...)
+{
+    usr = par("usr"); on.exit(par(usr))
+    par(usr = c(usr[1:2], 0, 1.5) )
+    h = hist(x, plot = FALSE)
+    breaks = h$breaks
+     nB = length(breaks)
+    y = h$counts
+     y = y/max(y)
+    rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+pairs(Piman,upper.panel = NULL,panel = panel.smooth,
+     pch = 20,cex = .5, gap = .5,lwd = 2,
+     diag.panel = panel.hist)
+
+```
+
+Implement the matrix algebra for least square linear regression
+
+```{r}
+y = stackloss$stack.loss
+X = cbind(rep(1,21),as.matrix(stackloss[,1:3]))
+(b = solve(t(X) %*% X) %*% t(X) %*% y)
+```
+
+Computationally more efficient way
+
+```{r}
+(b = solve(t(X) %*% X,t(X) %*% y))
+```
+
+```{r}
+lm.stack = lm(stack.loss ~ ., data = stackloss)
+print(lm.stack)
+par(mfrow = c(2,2))
+plot(lm.stack)
+X=model.matrix(lm.stack)
+summary(X)
+X
+```
+
+Minimizing the sum of absolute prediction errors.
+
+```{r}
+require(quantreg)
+rq.stack = rq(stack.loss ~ ., data = stackloss)
+print(rq.stack)
+```
+
+
+We want to see what happens when the Water.Temp of 19 degrees in the 17th observation of stackloss is replaced by 26 degrees. Let’s start by looking at a pairs() panel of plots. The old observation is shown as a dark filled dot, and the new observation is shown as a red filled dot. Here are the commands and the plot:
+
+```{r}
+library(faraway)
+Stack = stackloss
+Stack$Water.Temp[17] = 26
+colvec = rep("black",22)
+colvec[17] = "red"
+pchvec = rep(1,22)
+pchvec[c(17,22)] = 19
+cexvec = rep(1,22)
+cexvec[c(17,22)] = 1.5
+X = rbind(Stack,stackloss[17,])
+pairs(X,upper.panel = NULL,col = colvec,pch = pchvec,
+cex = cexvec)
+```
+
+```{r}
+round(cor(stackloss),2)
+round(cor(Stack),2)
+```
+
+```{r}
+stackloss.lm = lm(stack.loss~. , data=stackloss)
+Stack.lm = lm(stack.loss~. , data=Stack)
+sumary(stackloss.lm)
+sumary(Stack.lm)
+```
+
+```{r}
+library(quantreg)
+stackloss.rq = rq(stack.loss ~ ., data = stackloss)
+Stack.rq = rq(stack.loss ~ ., data = Stack)
+summary(stackloss.rq)
+summary(Stack.rq)
+```
+
+It is obvious that the altered data value has much less of an impact on the regression coefficients estimated with least absolute deviations than with least squares. Let’s make a table for a side-by-side comparison of the changes using the two estimation methods:
+
+```{r}
+cbind(Least.sq = round(Stack.lm$coef-stackloss.lm$coef,3),  Least.abs = round(Stack.rq$coef-stackloss.rq$coef,3))
+```
+
+Minimizing a sum of absolute errors produces regression coefficient estimates that are much less sensitive to outliers than minimizing a sum of squared errors. The outlier here produces a residual that is much larger in magnitude when squared than when its absolute value is taken. Least squares gives outliers more influence.
+
+```{r}
+X = as.matrix(pima2[,c("diastolic","triceps","age")]) 
+y = pima2$insulin
+tt.use = complete.cases(cbind(X,y))
+X = cbind(rep(1,sum(tt.use)),X[tt.use,])
+dim(X)
+y = pima2$insulin[tt.use]
+solve(t(X) %*% X,t(X) %*% y)
+pima2.lm = lm(insulin ~ diastolic + triceps + age, data = pima2)
+pima2.lm$coef
+```
+```{r}
+wafer.lm = lm(resist ~ x1 + x2 + x3 + x4,data = wafer)
+X = model.matrix(wafer.lm)
+data.frame(wafer,unclass(X))
+sapply(wafer,class)
+```
+
+These four variables each take on two values, but are represented as factors. The lm() command handles them by codifying them into what are called dummy variables. The value “+” takes on the value 1, and the value “-“ takes on the value 0. The model.matrix() output is a numerical matrix that reflects this conversion.
+
+```{r}
+round(cor(X),3)
+```
+
+Find the change in resistance when x1 moves from low to high value
+
+```{r}
+wafer.lm$coef["x1+"]
+```
+
+Refit the model without using x4 as a predictor. Two ways of doing this will be shown:
+
+```{r}
+wafer.lm2a = lm(resist ~ x1 + x2 + x3, data = wafer)
+wafer.lm2b = update(wafer.lm,~. -x4)
+wafer.lm2a$coef
+wafer.lm2b$coef
+wafer.lm$coef
+```
+
+Using update() is convenient when you already have fit an elaborate model and you want to see what happens if you drop one or more variables out of it. Note that the coefficients on x1+, x2+, and x3+ are not affected by x4+ being either in or out of the model. This is due to the fact that the predictor variables are uncorrelated. The intercept did change, however. Dropping x4+ increases the intercept by the mean of x4+ times the value of the regression coefficient. Because the mean of x4+ is .5, the intercept decreases by one-half of 14.4875, or about 7.2438.
+
+
+
+Faraway, Exercise 8(a-d) ( page 31). First convert the data frame as instructed.
+
+```{r}
+require(faraway)
+truck2 = truck
+truck
+as.numeric(truck2[,1])
+for (j in 1:5) truck2[,j] = 3 - 2*as.numeric(truck2[,j])
+head(truck2)
+
+
+truck2 = truck
+height=truck2[,6]
+truck2 = sapply(truck2[,-6], function(x) ifelse(x=="-",-1,1))
+truck2=cbind(truck2,height)
+truck2=data.frame(truck2)
+head(truck2)
+```
+
+
+Fit the linear model to all five factors and report the regression coefficients.
+
+```{r}
+truck.lm = lm(height ~ ., data = truck2)
+round(truck.lm$coef,4)
+
+truck1.lm = lm(height ~ ., data = truck)
+round(truck1.lm$coef,4)
+```
+
+Now drop factor O out of the model:
+
+```{r}
+truck.lm2 = update(truck.lm,~. -O)
+round(truck.lm2$coef,4)
+```
+Note that all of the remaining coefficients remain the same, including the intercept.
+
+Create new predictor, call itA = B + C + D + E. Add it to thetruck2data frame, and use A, B, C, D, E, and O as predictors. What happens to the regression summary?
+```{r}
+truck2$A = apply(truck2[,1:4],1,sum)
+truck.lm3 = lm(height ~ ., data = truck2)
+sumary(truck.lm3)
+```
+R notes the singularity in the design matrix due to A being a linear combination of four other predictor variables in the model. Instead of issuing an error message, R is able to detect a situation where dropping one factor (A) out of the model removes the singularity, so it does that.
+
+Continuing (c), try to calculate the regression coefficient directly and see what happens:
+```{r}
+X = model.matrix(truck.lm3)
+solve(t(X) %*% X,t(X) %*% truck2$height)
+```
+A pile of R dreck gets dumped on you as well it should because the XT X matrix is singular (determinant equals zero). In reality, the regression coefficient that minimizes the sum of squared errors is not uniquely defined although the row space of X is well defined. In (c) R chose what it thought was a reasonable solution to use out of an infinite number of possible solutions.
+
+PART 5
+
+1. Faraway ex.4 (page 30)
+```{r}
+	library(faraway)
+	varuse = c("lpsa","lcavol","lweight","svi","lbph","age",
+		"lcp","pgg45","gleason")
+	nv = length(varuse)
+	nv1 = nv - 1
+	rsq = rep(0.,nv1)
+	sigma = rep(0.,nv1)
+	for (j in 1:nv1) {
+		pros.lm = lm(lpsa ~., 
+			data = prostate[,varuse[1:(j+1)]])
+		pros.sum = summary(pros.lm)
+		rsq[j] = pros.sum$r.squared
+		sigma[j] = pros.sum$sigma
+	}
+	par(mfrow = c(1,2))
+	plot(1:nv1,rsq,type = "b",lwd = 1.5,
+		xlab = "Number of Predictors",ylab = "R-Squared")
+	title("Prostate Data:  R-Squared Values")
+	plot(1:nv1,sigma,type = "b",lwd = 1.5,
+		xlab = "Number of Predictors",ylab = "RSE")
+	title("Prostate Data:  Residual Standard Error")
+```
+2. Faraway ex.5 (page 30)
+
+```{r}
+plot(lpsa ~ lcavol,data = prostate,pch = "*")
+	lm1 = lm(lpsa ~ lcavol,data = prostate)
+	abline(lm1,col = "maroon",lwd = 2.5)
+	lm2 = lm(lcavol ~ lpsa,data = prostate)
+	b = coef(lm2)
+	b[2] = 1/b[2]
+	b[1] = -b[1]*b[2]
+	abline(b ,col = "dark green",lwd = 2.5)
+	legend("bottomright",legend = c("lpsa from lcavol",
+		"lcavol from lpsa"),lty = 1,lwd = 2.5,
+		col = c("maroon","dark green"),bty = "n")
+	(intsct = with(prostate,c(mean(lcavol),mean(lpsa))))
+```
+
+3. Faraway ex.1 (page 56)
+
+```{r}
+	prostate.lm = lm(lpsa ~., data = prostate)
+	prostate.sum = summary(prostate.lm)
+	(b.age = prostate.sum$coef["age",1])
+	(se.age = prostate.sum$coef["age",2])
+	(dgfr = prostate.lm$df.residual)
+#
+#  A 90% CI for the coeffcient on age, using the t-distribution
+#
+	round(b.age + c(-1,1)*qt(.95,dgfr)*se.age,3)
+#
+#  A 95% CI for the coeffcient on age, using the t-distribution
+#
+	round(b.age + c(-1,1)*qt(.975,dgfr)*se.age,3)
+```
+4. Faraway ex.3 (page 56)
+```{r}
+
+```
+
+```{r}
+
+```
+
+
